@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>周期表ゲーム</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+		body{
+			font-family:"Segoe UI",sans-serif;
+			background:#f1f5f9;
+			color:#0f172a;
+			margin:0;
+			padding:10px;
+		}
+
+		h1{
+			width:140px;
+			height:70px;
+
+			margin:0;
+
+			display:flex;
+			align-items:center;
+			justify-content:center;
+
+			background:white;
+			border-radius:18px;
+			box-shadow:0 5px 15px rgba(0,0,0,.12);
+
+			font-size:18px;
+		}
+
+		#topbar{
+			display:flex;
+			justify-content:center;
+			align-items:center;
+			gap:20px;
+			margin:12px auto;
+			overflow-x:auto;
+		}
+
+		#elementName,
+		#question,
+		#score,
+		#timer{
+			height:70px;
+
+			display:flex;
+			align-items:center;
+			justify-content:center;
+
+			background:white;
+			border-radius:18px;
+
+			box-shadow:0 5px 15px rgba(0,0,0,.12);
+
+			text-align:center;
+		}
+
+		#elementName{
+			width:140px;
+			padding:0 8px;
+			box-sizing:border-box;
+			flex-shrink:0;
+
+			font-size:13px;
+			font-weight:700;
+			white-space:nowrap;
+		}
+
+		#question{
+			width:70px;
+
+			font-size:24px;
+			font-weight:700;
+		}
+
+		#score,
+		#timer{
+			width:70px;
+			font-size:18px;
+		}
+
+		#table,
+		#lanthanoids,
+		#actinoids{
+			background:white;
+			padding:8px;
+			border-radius:20px;
+			box-shadow:0 5px 20px rgba(0,0,0,.08);
+			overflow-x:auto;
+		}
+
+		/* セル拡大アニメーションの見た目のはみ出しをここで隠し、
+		   外側のスクロール領域(scrollWidth)を変化させない */
+		#tableGrid,
+		#lanthanoidGrid,
+		#actinoidGrid{
+			overflow:hidden;
+		}
+
+		#tableGrid{
+			display:grid;
+			grid-template-columns:24px repeat(18,40px);
+			gap:3px;
+		}
+
+		#lanthanoidGrid,
+		#actinoidGrid{
+			display:grid;
+			grid-template-columns:repeat(15,40px);
+			gap:2px;
+		}
+
+		.cell{
+			width:40px;
+			height:40px;
+			display:flex;
+			align-items:center;
+			justify-content:center;
+			border-radius:8px;
+			font-size:11px;
+			font-weight:bold;
+			cursor:pointer;
+			transition:.15s;
+			border:1px solid #cbd5e1;
+			background:#e2e8f0;
+		}
+
+		.cell:hover:not(.empty){
+			transform:scale(1.08);
+		}
+
+		.empty{
+			background:transparent;
+			border:none;
+			pointer-events:none;
+		}
+
+		.filled{
+			outline:3px solid #0f172a;
+			outline-offset:-2px;
+			color:black;
+		}
+		.wrong{
+			background:#ef4444!important;
+		}
+
+		.wrapper{
+			display:flex;
+			align-items:center;
+			justify-content:center;
+			gap:5px;
+			margin-bottom:2px;
+		}
+
+		.section-title{
+			width:auto;
+			margin:0;
+			padding:0;
+			font-size:14px;
+			font-weight:bold;
+			color:#64748b;
+			white-space:nowrap;
+		}
+
+		.alkali{background:rgba(220,38,38,0.40);}
+		.alkaline{background:rgba(234,88,12,0.40);}
+		.transition{background:rgba(37,99,235,0.40);}
+		.metalloid{background:rgba(22,163,74,0.40);}
+		.nonmetal{background:rgba(5,150,105,0.40);}
+		.halogen{background:rgba(147,51,234,0.40);}
+		.noble{background:rgba(202,138,4,0.40);}
+		.lanthanoid{background:rgba(15,118,110,0.40);}
+		.actinoid{background:rgba(8,145,178,0.40);}
+		.post{background:rgba(71,85,105,0.40);}
+
+		.group-label,
+		.period-label{
+			display:flex;
+			align-items:center;
+			justify-content:center;
+			font-weight:bold;
+			color:#64748b;
+		}
+
+		.group-label{
+			height:24px;
+			font-size:12px;
+		}
+
+		.period-label{
+			width:24px;
+			height:40px;
+		}
+		#skipBtn{
+			width:100px;
+			height:70px;
+			border:none;
+			background:#64748b;
+			color:white;
+			padding:12px 20px;
+			border-radius:12px;
+			cursor:pointer;
+			font-size:12px;
+		}
+
+		#skipBtn:hover{
+			background:#475569;
+		}
+		.hint{
+			animation:blink 0.4s infinite;
+		}
+
+		@keyframes blink{
+			50%{
+				transform:scale(1.15);
+				box-shadow:0 0 15px gold;
+			}
+		}
+		.auto-fill{
+			animation:autoFill 0.8s ease;
+		}
+
+		@keyframes autoFill{
+
+			0%{
+				transform:scale(1);
+			}
+
+			30%{
+				transform:scale(1.4);
+				box-shadow:0 0 25px gold;
+			}
+
+			60%{
+				transform:scale(0.9);
+			}
+
+			100%{
+				transform:scale(1);
+			}
+
+		}
+		#completeModal{
+			display:none;
+
+			position:fixed;
+			inset:0;
+
+			background:rgba(0,0,0,.6);
+
+			z-index:9999;
+
+			justify-content:center;
+			align-items:center;
+
+			pointer-events:auto;
+		}
+
+		#modalContent{
+			background:white;
+			padding:40px;
+			border-radius:20px;
+			text-align:center;
+			min-width:300px;
+		}
+
+		#modalContent h2{
+			font-size:40px;
+			margin:0 0 20px;
+		}
+
+		#restartBtn{
+			padding:12px 30px;
+			font-size:18px;
+			border:none;
+			border-radius:10px;
+			cursor:pointer;
+		}
+		.f-block{
+			background:#94a3b8;
+			color:black;
+			font-weight:bold;
+		}
+
+		#gameScreen{
+			display:none;
+		}
+
+		#homeScreen{
+			min-height:100vh;
+
+			display:flex;
+			flex-direction:column;
+
+			justify-content:center;
+			align-items:center;
+
+			gap:20px;
+		}
+
+		#startBtn{
+			padding:15px 40px;
+
+			border:none;
+			border-radius:12px;
+
+			font-size:20px;
+
+			background:#2563eb;
+			color:white;
+
+			cursor:pointer;
+		}
+		.modal-buttons{
+			display:flex;
+			justify-content:center;
+			gap:15px;
+			margin-top:20px;
+		}
+
+		#restartBtn,
+		#homeBtn{
+			padding:12px 24px;
+			font-size:16px;
+			border:none;
+			border-radius:10px;
+			cursor:pointer;
+		}
+
+		#restartBtn{
+			background:#2563eb;
+			color:white;
+		}
+
+		#homeBtn{
+			background:#64748b;
+			color:white;
+		}
+		#homeBtnGame{
+			width:100px;
+			height:70px;
+
+			border:none;
+			border-radius:12px;
+
+			background:#475569;
+			color:white;
+
+			cursor:pointer;
+			font-size:12px;
+		}
+    </style>
+</head>
+<body>
+	<div id="homeScreen">
+		<h1>周期表ゲーム</h1>
+
+		<p>
+			元素記号を見て正しい位置をクリックしよう！
+		</p>
+
+		<button id="startBtn">スタート</button>
+	</div>
+
+	<div id="gameScreen">
+		<div id="topbar">
+			<div id="elementName"></div>
+			<div id="question">?</div>
+			<div id="score">0 / 118</div>
+			<div id="timer">0 秒</div>
+			<button id="skipBtn">
+				わからない
+			</button>
+			<button id="homeBtnGame">ホームへ</button>
+		</div>
+
+		<div class="wrapper">
+			<div id="table"><div id="tableGrid"></div></div>
+		</div>
+
+		<div class="wrapper">
+			<div class="section-title">ランタノイド</div>
+			<div id="lanthanoids"><div id="lanthanoidGrid"></div></div>
+		</div>
+
+		<div class="wrapper">
+			<div class="section-title">アクチノイド</div>
+			<div id="actinoids"><div id="actinoidGrid"></div></div>
+		</div>
+	</div>
+
+	<div id="completeModal">
+		<div id="modalContent">
+			<h2>完成！</h2>
+			<p id="finalTime"></p>
+			<button id="restartBtn">もう一度</button>
+			<button id="homeBtn">ホームへ</button>
+		</div>
+	</div>
+	<script>
+		// ===== 118元素完全データ =====
+		const elements=[
+			{symbol:"H",p:1,g:1,type:"nonmetal"},{symbol:"He",p:1,g:18,type:"noble"},
+			{symbol:"Li",p:2,g:1,type:"alkali"},{symbol:"Be",p:2,g:2,type:"alkaline"},{symbol:"B",p:2,g:13,type:"metalloid"},{symbol:"C",p:2,g:14,type:"nonmetal"},{symbol:"N",p:2,g:15,type:"nonmetal"},{symbol:"O",p:2,g:16,type:"nonmetal"},{symbol:"F",p:2,g:17,type:"halogen"},{symbol:"Ne",p:2,g:18,type:"noble"},
+			{symbol:"Na",p:3,g:1,type:"alkali"},{symbol:"Mg",p:3,g:2,type:"alkaline"},{symbol:"Al",p:3,g:13,type:"post"},{symbol:"Si",p:3,g:14,type:"metalloid"},{symbol:"P",p:3,g:15,type:"nonmetal"},{symbol:"S",p:3,g:16,type:"nonmetal"},{symbol:"Cl",p:3,g:17,type:"halogen"},{symbol:"Ar",p:3,g:18,type:"noble"},
+			{symbol:"K",p:4,g:1,type:"alkali"},{symbol:"Ca",p:4,g:2,type:"alkaline"},{symbol:"Sc",p:4,g:3,type:"transition"},{symbol:"Ti",p:4,g:4,type:"transition"},{symbol:"V",p:4,g:5,type:"transition"},{symbol:"Cr",p:4,g:6,type:"transition"},{symbol:"Mn",p:4,g:7,type:"transition"},{symbol:"Fe",p:4,g:8,type:"transition"},{symbol:"Co",p:4,g:9,type:"transition"},{symbol:"Ni",p:4,g:10,type:"transition"},{symbol:"Cu",p:4,g:11,type:"transition"},{symbol:"Zn",p:4,g:12,type:"transition"},{symbol:"Ga",p:4,g:13,type:"post"},{symbol:"Ge",p:4,g:14,type:"metalloid"},{symbol:"As",p:4,g:15,type:"metalloid"},{symbol:"Se",p:4,g:16,type:"nonmetal"},{symbol:"Br",p:4,g:17,type:"halogen"},{symbol:"Kr",p:4,g:18,type:"noble"},
+			{symbol:"Rb",p:5,g:1,type:"alkali"},{symbol:"Sr",p:5,g:2,type:"alkaline"},{symbol:"Y",p:5,g:3,type:"transition"},{symbol:"Zr",p:5,g:4,type:"transition"},{symbol:"Nb",p:5,g:5,type:"transition"},{symbol:"Mo",p:5,g:6,type:"transition"},{symbol:"Tc",p:5,g:7,type:"transition"},{symbol:"Ru",p:5,g:8,type:"transition"},{symbol:"Rh",p:5,g:9,type:"transition"},{symbol:"Pd",p:5,g:10,type:"transition"},{symbol:"Ag",p:5,g:11,type:"transition"},{symbol:"Cd",p:5,g:12,type:"transition"},{symbol:"In",p:5,g:13,type:"post"},{symbol:"Sn",p:5,g:14,type:"post"},{symbol:"Sb",p:5,g:15,type:"metalloid"},{symbol:"Te",p:5,g:16,type:"metalloid"},{symbol:"I",p:5,g:17,type:"halogen"},{symbol:"Xe",p:5,g:18,type:"noble"},
+			{symbol:"Cs",p:6,g:1,type:"alkali"},{symbol:"Ba",p:6,g:2,type:"alkaline"},{symbol:"La",p:6,g:3,type:"lanthanoid",index:1},{symbol:"Hf",p:6,g:4,type:"transition"},{symbol:"Ta",p:6,g:5,type:"transition"},{symbol:"W",p:6,g:6,type:"transition"},{symbol:"Re",p:6,g:7,type:"transition"},{symbol:"Os",p:6,g:8,type:"transition"},{symbol:"Ir",p:6,g:9,type:"transition"},{symbol:"Pt",p:6,g:10,type:"transition"},{symbol:"Au",p:6,g:11,type:"transition"},{symbol:"Hg",p:6,g:12,type:"transition"},{symbol:"Tl",p:6,g:13,type:"post"},{symbol:"Pb",p:6,g:14,type:"post"},{symbol:"Bi",p:6,g:15,type:"post"},{symbol:"Po",p:6,g:16,type:"metalloid"},{symbol:"At",p:6,g:17,type:"halogen"},{symbol:"Rn",p:6,g:18,type:"noble"},
+			{symbol:"Fr",p:7,g:1,type:"alkali"},{symbol:"Ra",p:7,g:2,type:"alkaline"},{symbol:"Ac",p:7,g:3,type:"actinoid",index:1},{symbol:"Rf",p:7,g:4,type:"transition"},{symbol:"Db",p:7,g:5,type:"transition"},{symbol:"Sg",p:7,g:6,type:"transition"},{symbol:"Bh",p:7,g:7,type:"transition"},{symbol:"Hs",p:7,g:8,type:"transition"},{symbol:"Mt",p:7,g:9,type:"transition"},{symbol:"Ds",p:7,g:10,type:"transition"},{symbol:"Rg",p:7,g:11,type:"transition"},{symbol:"Cn",p:7,g:12,type:"transition"},{symbol:"Nh",p:7,g:13,type:"post"},{symbol:"Fl",p:7,g:14,type:"post"},{symbol:"Mc",p:7,g:15,type:"post"},{symbol:"Lv",p:7,g:16,type:"post"},{symbol:"Ts",p:7,g:17,type:"halogen"},{symbol:"Og",p:7,g:18,type:"noble"}
+		];
+
+		// ランタノイド・アクチノイド完全配列
+		const lanthanoids=["La","Ce","Pr","Nd","Pm","Sm","Eu","Gd","Tb","Dy","Ho","Er","Tm","Yb","Lu"];
+		const actinoids=["Ac","Th","Pa","U","Np","Pu","Am","Cm","Bk","Cf","Es","Fm","Md","No","Lr"];
+
+		// 元素記号 -> 日本語名
+		const elementNames={
+			H:"水素",He:"ヘリウム",
+			Li:"リチウム",Be:"ベリリウム",B:"ホウ素",C:"炭素",N:"窒素",O:"酸素",F:"フッ素",Ne:"ネオン",
+			Na:"ナトリウム",Mg:"マグネシウム",Al:"アルミニウム",Si:"ケイ素",P:"リン",S:"硫黄",Cl:"塩素",Ar:"アルゴン",
+			K:"カリウム",Ca:"カルシウム",Sc:"スカンジウム",Ti:"チタン",V:"バナジウム",Cr:"クロム",Mn:"マンガン",Fe:"鉄",Co:"コバルト",Ni:"ニッケル",Cu:"銅",Zn:"亜鉛",Ga:"ガリウム",Ge:"ゲルマニウム",As:"ヒ素",Se:"セレン",Br:"臭素",Kr:"クリプトン",
+			Rb:"ルビジウム",Sr:"ストロンチウム",Y:"イットリウム",Zr:"ジルコニウム",Nb:"ニオブ",Mo:"モリブデン",Tc:"テクネチウム",Ru:"ルテニウム",Rh:"ロジウム",Pd:"パラジウム",Ag:"銀",Cd:"カドミウム",In:"インジウム",Sn:"スズ",Sb:"アンチモン",Te:"テルル",I:"ヨウ素",Xe:"キセノン",
+			Cs:"セシウム",Ba:"バリウム",La:"ランタン",Hf:"ハフニウム",Ta:"タンタル",W:"タングステン",Re:"レニウム",Os:"オスミウム",Ir:"イリジウム",Pt:"白金",Au:"金",Hg:"水銀",Tl:"タリウム",Pb:"鉛",Bi:"ビスマス",Po:"ポロニウム",At:"アスタチン",Rn:"ラドン",
+			Fr:"フランシウム",Ra:"ラジウム",Ac:"アクチニウム",Rf:"ラザホージウム",Db:"ドブニウム",Sg:"シーボーギウム",Bh:"ボーリウム",Hs:"ハッシウム",Mt:"マイトネリウム",Ds:"ダームスタチウム",Rg:"レントゲニウム",Cn:"コペルニシウム",Nh:"ニホニウム",Fl:"フレロビウム",Mc:"モスコビウム",Lv:"リバモリウム",Ts:"テネシン",Og:"オガネソン",
+			Ce:"セリウム",Pr:"プラセオジム",Nd:"ネオジム",Pm:"プロメチウム",Sm:"サマリウム",Eu:"ユウロピウム",Gd:"ガドリニウム",Tb:"テルビウム",Dy:"ジスプロシウム",Ho:"ホルミウム",Er:"エルビウム",Tm:"ツリウム",Yb:"イッテルビウム",Lu:"ルテチウム",
+			Th:"トリウム",Pa:"プロトアクチニウム",U:"ウラン",Np:"ネプツニウム",Pu:"プルトニウム",Am:"アメリシウム",Cm:"キュリウム",Bk:"バークリウム",Cf:"カリホルニウム",Es:"アインスタイニウム",Fm:"フェルミウム",Md:"メンデレビウム",No:"ノーベリウム",Lr:"ローレンシウム"
+		};
+
+		// index付与
+		lanthanoids.forEach((s,i)=>{
+			if(!elements.find(e=>e.symbol===s)){
+				elements.push({symbol:s,type:"lanthanoid",index:i+1});
+			}
+		});
+		actinoids.forEach((s,i)=>{
+			if(!elements.find(e=>e.symbol===s)){
+				elements.push({symbol:s,type:"actinoid",index:i+1});
+			}
+		});
+
+		let remaining=[...elements];
+		let current,score=0,time=0;
+		let timerId;
+
+		// メイン生成
+		// 族番号
+		$("#tableGrid").append($("<div>"));
+
+		for(let g=1;g<=18;g++){
+			$("#tableGrid").append(
+				$("<div>")
+					.addClass("group-label")
+					.text(g)
+			);
+		}
+
+		// 周期表本体
+		for(let p=1;p<=7;p++){
+
+			$("#tableGrid").append(
+				$("<div>")
+					.addClass("period-label")
+					.text(p)
+			);
+
+			for(let g=1;g<=18;g++){
+
+				const cell=$("<div>")
+					.addClass("cell")
+					.attr("data-p",p)
+					.attr("data-g",g);
+
+				if(!elements.some(e=>e.p==p&&e.g==g)){
+					cell.addClass("empty");
+				}
+
+				$("#tableGrid").append(cell);
+			}
+		}
+		$('.cell[data-p="6"][data-g="3"]').addClass("f-block").text("57-71");
+		$('.cell[data-p="7"][data-g="3"]').addClass("f-block").text("89-103");
+
+		// 下段生成
+		lanthanoids.forEach((s,i)=>{
+			$("#lanthanoidGrid").append(
+				$("<div>")
+					.addClass("cell")
+					.attr("data-i",i+1)
+					.attr("data-type","lanthanoid")
+			);
+		});
+
+		actinoids.forEach((s,i)=>{
+			$("#actinoidGrid").append(
+				$("<div>")
+					.addClass("cell")
+					.attr("data-i",i+1)
+					.attr("data-type","actinoid")
+			);
+		});
+
+		$("#skipBtn").click(function(){
+
+			let target;
+
+			if(current.type==="lanthanoid" || current.type==="actinoid"){
+
+				target = $(
+					`.cell[data-type="${current.type}"][data-i="${current.index}"]`
+				);
+
+			}else{
+
+				target = $(
+					`.cell[data-p="${current.p}"][data-g="${current.g}"]`
+				);
+
+			}
+
+			fillCell(target,true);
+
+		});
+		function next(){
+
+			if(remaining.length===0){
+
+				clearInterval(timerId);
+
+				$("#finalTime").html(
+					`クリアタイム<br>${time}秒`
+				);
+
+				$("#completeModal").css("display","flex");
+
+				return;
+			}
+
+			current=remaining[
+				Math.floor(Math.random()*remaining.length)
+			];
+
+			$("#question").text(current.symbol);
+			$("#elementName").text(elementNames[current.symbol]||"");
+		}
+
+		$(document).on("click",".cell",function(){
+			if($(this).hasClass("empty")){
+				return;
+			}
+
+			const p=$(this).data("p");
+			const g=$(this).data("g");
+			const i=$(this).data("i");
+
+			let correct=false;
+			if(current.p && p==current.p && g==current.g){
+				correct=true;
+			}
+			if(
+				current.index &&
+				i==current.index &&
+				current.type===$(this).data("type")
+			){
+				correct=true;
+			}
+			if(correct){
+				fillCell($(this));
+			}else{
+				$(this).addClass("wrong");
+				setTimeout(()=>$(this).removeClass("wrong"),300);
+			}
+		});
+		function fillCell(cell,isSkip=false){
+
+			cell
+				.text(current.symbol)
+				.addClass("filled")
+				.addClass(current.type);
+
+			if(isSkip){
+
+				cell.addClass("auto-fill");
+
+				setTimeout(()=>{
+					cell.removeClass("auto-fill");
+				},800);
+
+			}
+
+			remaining=remaining.filter(e=>e!==current);
+
+			score++;
+
+			$("#score").html(`${score}<br>/118`);
+
+			next();
+		}
+
+		$("#restartBtn").click(resetGame);
+
+		function startTimer(){
+
+			clearInterval(timerId);
+
+			timerId = setInterval(()=>{
+				$("#timer").text(++time + " 秒");
+			},1000);
+
+		}
+
+		$("#startBtn").click(function(){
+			resetGame();
+			$("#homeScreen").hide();
+
+			$("#gameScreen").show();
+
+			startTimer();
+
+		});
+
+		$("#homeBtn").click(function(){
+			resetGame();
+			$("#completeModal").hide();
+
+			$("#gameScreen").hide();
+
+			$("#homeScreen").show();
+
+		});
+
+		function resetGame(){
+			clearInterval(timerId);
+
+			// スコア
+			score = 0;
+
+			// タイマー
+			time = 0;
+			$("#timer").text("0 秒");
+
+			// 残り元素
+			remaining = [...elements];
+
+			// マスを初期化
+			$(".cell")
+				.removeClass("filled alkali alkaline transition metalloid nonmetal halogen noble lanthanoid actinoid post auto-fill wrong")
+				.text("");
+
+			$("#score").html("0<br>/118");
+
+			$("#completeModal").hide();
+
+			next();
+		}
+
+		$("#homeBtnGame").click(function(){
+
+			clearInterval(timerId);
+			resetGame();
+
+			$("#gameScreen").hide();
+
+			$("#completeModal").hide();
+
+			$("#homeScreen").show();
+
+		});
+	</script>
+</body>
+</html>
