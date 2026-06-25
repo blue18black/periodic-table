@@ -6,12 +6,19 @@
     <title>周期表ゲーム</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
+		html{
+			height:100%;
+		}
+
 		body{
 			font-family:"Segoe UI",sans-serif;
 			background:#f1f5f9;
 			color:#0f172a;
 			margin:0;
 			padding:10px;
+			height:100%;
+			box-sizing:border-box;
+			overflow:hidden;
 		}
 
 		h1{
@@ -86,18 +93,10 @@
 		#lanthanoids,
 		#actinoids{
 			background:white;
-			padding:8px;
+			padding:20px;
 			border-radius:20px;
 			box-shadow:0 5px 20px rgba(0,0,0,.08);
 			overflow-x:auto;
-		}
-
-		/* セル拡大アニメーションの見た目のはみ出しをここで隠し、
-		   外側のスクロール領域(scrollWidth)を変化させない */
-		#tableGrid,
-		#lanthanoidGrid,
-		#actinoidGrid{
-			overflow:hidden;
 		}
 
 		#tableGrid{
@@ -231,7 +230,7 @@
 
 			30%{
 				transform:scale(1.4);
-				box-shadow:0 0 25px gold;
+				box-shadow:0 0 10px gold;
 			}
 
 			60%{
@@ -287,10 +286,11 @@
 
 		#gameScreen{
 			display:none;
+			transform-origin:top center;
 		}
 
 		#homeScreen{
-			min-height:100vh;
+			height:100%;
 
 			display:flex;
 			flex-direction:column;
@@ -611,11 +611,34 @@
 
 		}
 
+		// 画面の高さに収まらない場合、ゲーム画面全体を縮小してスクロールを発生させない
+		function fitGameScreen(){
+
+			const gs = document.getElementById("gameScreen");
+
+			if(gs.style.display==="none"){
+				return;
+			}
+
+			gs.style.transform="none";
+
+			const needed = gs.scrollHeight;
+			const avail = window.innerHeight - 30; // body padding分 + 影などの誤差マージン
+
+			const scale = needed>avail ? avail/needed : 1;
+
+			gs.style.transform = `scale(${scale})`;
+		}
+
+		$(window).on("resize",fitGameScreen);
+
 		$("#startBtn").click(function(){
 			resetGame();
 			$("#homeScreen").hide();
 
 			$("#gameScreen").show();
+
+			fitGameScreen();
 
 			startTimer();
 
